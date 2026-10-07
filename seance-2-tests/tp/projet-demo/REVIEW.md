@@ -1,0 +1,10 @@
+   **Point de contrôle**                                             | **OK / KO** | **Ce que j'ai corrigé**                                                                                     |
+ |-------------------------------------------------------------------|-------------|-------------------------------------------------------------------------------------------------------------|
+ | Les codes de statut correspondent à la spec (201, 404, 409)       | OK          | -                                                                                                           |
+ | `response_model` présent sur les 4 routes                         | OK          | -                                                                                                           |
+ | La validation `date_fin > date_debut` est dans le schéma Pydantic | KO          | Ajouté `if "date_debut" in values` dans le validateur pour éviter un `KeyError` si `date_debut` n'est pas encore validé. |
+ | Le router n'accède pas au stockage de `items`                     | OK          | -                                                                                                           |
+ | Pas d'`async def` sans `await`                                    | OK          | -                                                                                                           |
+ | Aucune dépendance ajoutée dans `requirements.txt` (ou justifiée) | OK          | -                                                                                                           |
+ | Les routes littérales sont déclarées avant les routes paramétrées | KO          | Déplacé `POST /{reservation_id}/annuler` AVANT `GET /{reservation_id}` pour éviter les conflits.               |
+ | Réponse cohérente pour `POST /reservations/999/annuler`           | OK          | -                             
