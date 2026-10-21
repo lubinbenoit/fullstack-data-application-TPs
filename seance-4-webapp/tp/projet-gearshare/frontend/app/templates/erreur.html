@@ -1,0 +1,10 @@
+{# app/templates/erreur.html #}
+{% extends "base.html" %}
+
+
+{% block title %}Erreur — GearShare{% endblock %}
+
+{% block content %}
+  <p>{{ message }}</p>
+  <p><a href="/items">Retour à la liste du matériel</a></p>
+{% endblock %}

@@ -1,0 +1,63 @@
+{# app/templates/items/detail.html #}
+{% extends "base.html" %}
+
+{% block title %}{{ item.titre }} — GearShare{% endblock %}
+
+{% block content %}
+<p><a href="/items">← Retour à la liste</a></p>
+
+<h1>{{ item.titre }}</h1>
+<p>{{ item.description }}</p>
+<p>Tarif : {{ item.tarif_jour }} € / jour</p>
+<p>Statut : {{ "Disponible" if item.disponible else "Indisponible" }}</p>
+
+
+{% if message %}
+  <div class="alerte alerte-{{ message[0] }}">{{ message[1] }}</div>
+{% endif %}
+
+<h2>Réservations</h2>
+{% if reservations %}
+  <table>
+    <thead>
+      <tr><th>Du</th><th>Au</th><th>Statut</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for r in reservations %}
+        <tr>
+          <td>{{ r.date_debut }}</td>
+          <td>{{ r.date_fin }}</td>
+          <td>{{ r.statut }}</td>
+          <td>
+            {% if r.statut != "annulee" %}
+              <form method="post" action="/reservations/{{ r.id }}">
+                <input type="hidden" name="statut" value="annulee">
+                <input type="hidden" name="item_id" value="{{ item.id }}">
+                <button type="submit">Annuler</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>Aucune réservation pour le moment.</p>
+{% endif %}
+
+<h2>Réserver</h2>
+{% if erreurs %}
+  <div class="alerte alerte-erreur">
+    <ul>{% for m in erreurs %}<li>{{ m }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+<form method="post" action="/items/{{ item.id }}/reservations">
+  <label>Du
+    <input type="date" name="date_debut" required value="{{ valeurs.get('date_debut', '') }}">
+  </label>
+  <label>Au
+    <input type="date" name="date_fin" required value="{{ valeurs.get('date_fin', '') }}">
+  </label>
+  <button type="submit">Réserver</button>
+</form>
+{% endblock %}

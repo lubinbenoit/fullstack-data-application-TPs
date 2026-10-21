@@ -1,0 +1,28 @@
+{# app/templates/items/list.html #}
+{% extends "base.html" %}
+
+{% block title %}Objets — GearShare{% endblock %}
+
+{% block content %}
+<h1>Objets disponibles</h1>
+
+<p><a href="/items/new">Proposer un objet</a></p>
+{% if items %}
+  <table>
+    <thead>
+      <tr><th>Objet</th><th>Tarif / jour</th><th>Statut</th></tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+        <tr>
+          <td><a href="/items/{{ item.id }}">{{ item.titre }}</a></td>
+          <td>{{ item.tarif_jour }} €</td>
+          <td>{{ "Disponible" if item.disponible else "Indisponible" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>Aucun objet pour le moment.</p>
+{% endif %}
+{% endblock %}

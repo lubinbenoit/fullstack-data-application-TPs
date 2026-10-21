@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Proposer un objet — GearShare{% endblock %}
+
+{% block content %}
+<h1>Proposer un objet</h1>
+
+{% if erreurs %}
+  <div class="alerte alerte-erreur">
+    <ul>
+      {% for message in erreurs %}<li>{{ message }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<form method="post" action="/items">
+  <label>Titre
+    <input type="text" name="titre" required minlength="3"
+           value="{{ valeurs.get('titre', '') }}">
+  </label>
+
+  <label>Description
+    <textarea name="description">{{ valeurs.get('description', '') }}</textarea>
+  </label>
+
+  <label>Tarif / jour (€)
+    <input type="number" name="tarif_jour" required min="0.01" step="0.01"
+           value="{{ valeurs.get('tarif_jour', '') }}">
+  </label>
+
+  <label>
+    <input type="checkbox" name="disponible"
+           {% if valeurs.get('disponible', true) %}checked{% endif %}>
+    Disponible
+  </label>
+
+  <button type="submit">Enregistrer</button>
+</form>
+{% endblock %}
