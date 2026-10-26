@@ -35,7 +35,11 @@ def create_item_page(
         "tarif_jour": tarif_jour,
         "disponible": disponible,
     }
-    data = {**valeurs, "description": description or None}  # "" -> absence de description
+    data = {
+        **valeurs, 
+        "description": description or None, # "" -> absence de description
+        "owner_id": 1,  # TODO séance 5
+    }  
     try:
         item = api_client.create_item(data)
     except ApiError as exc:

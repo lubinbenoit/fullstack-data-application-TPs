@@ -20,14 +20,14 @@ def create_reservation_page(
     try:
         api_client.create_reservation(item_id, date_debut, date_fin)
     except ApiError as exc:
-        if exc.status_code != 422:
+        if exc.status_code not in (409, 422):
             raise
         return render_item_detail(
             request,
             item_id,
             erreurs=exc.messages(),
             valeurs={"date_debut": date_debut, "date_fin": date_fin},
-            status_code=422,
+            status_code=exc.status_code,
         )
     return RedirectResponse(f"/items/{item_id}?message=reservee", status_code=303)
 

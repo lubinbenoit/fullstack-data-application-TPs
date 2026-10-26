@@ -54,7 +54,12 @@ class ApiClient:
         return self._send(
             "POST",
             "/reservations",
-            json={"item_id": item_id, "date_debut": date_debut.isoformat(), "date_fin": date_fin.isoformat()},
+            json={
+                "item_id": item_id,
+                "date_debut": date_debut.isoformat(),
+                "date_fin": date_fin.isoformat(),
+                "borrower_id": 2,  # TODO séance 5
+            },
         )
 
     def list_reservations(self, item_id: int) -> list[dict[str, Any]]:
