@@ -15,55 +15,56 @@ la ressource `reservations`.
 - automatiser, en tests de contrat, toutes les vérifications faites à la main en séance 1 ;
 
 
-## ce que j'ai fait
+## Ce que j'ai fait
 
-j'ai copié collé le projet de la séance 1 dans la séance 2, sans écraser les fichiers déjà présents.
+J'ai copié collé le projet de la séance 1 dans la séance 2, sans écraser les fichiers déjà présents.
 
-ajouter pytest dans le conteneur en mettant dans requirements.txt
+Ajouter pytest dans le conteneur en mettant dans requirements.txt
 pytest
 pytest-cov
 httpx
 
 (il y avait déjà :
+```
 pytest==8.3.3
 pytest-cov==5.0.0
 httpx==0.27.2
+```
 )
-puis docker compose up --build
+Puis `docker compose up --build`
 
 
 
-Etape 1 : premier test + grosse fixture
+### Etape 1 : premier test + grosse fixture
 
 
-2.1
+#### 2.1
 
-ajouter les fichiers dans projet-demo/tests/
+Ajouter les fichiers dans `projet-demo/tests/`
 
-et test_health.py
-conftest.py
-
-
-et pytest.ini dans projet-demo/
+Et `test_health.py`, `conftest.py`
 
 
-il y a déjà pytest.ici avec
+Et `pytest.ini` dans `projet-demo/`
+
+Il y a déjà `pytest.ini` avec
+```python
 [pytest]
 pythonpath = .
 testpaths = tests
-
-
-brancher les tests dans Docker
-dans Dockerfile il faut que le COPY inclue tests/ et pytest.ini
-
-j'ai ajouté 
 ```
+
+#### brancher les tests dans Docker
+Dans Dockerfile il faut que le `COPY` inclue `tests/` et `pytest.ini`
+
+J'ai ajouté 
+```bash
 COPY pytest.ini .
 COPY tests/ ./tests/
 ```
 
-Dans test health (normalement ça y est déjà) :
-```
+Dans `test health` (normalement ça y est déjà) :
+```python
 from fastapi.testclient import TestClient
 from app.main import app
 
@@ -74,15 +75,15 @@ def test_health_retourne_ok() -> None:
     assert response.json() == {"status": "ok"}
 ```
 
-attention il faut éteindre l'appli puis relancer pour prendre en compre les modifs du Dockerfile
-
+Attention il faut éteindre l'appli puis relancer pour prendre en compre les modifs du Dockerfile
+```bash
 docker compose up --build
 
 docker compose run --rm api pytest
-
-
-ensuite on ajoute dans conftest
 ```
+
+Ensuite on ajoute dans `conftest`
+```python
 import pytest
 from fastapi.testclient import TestClient
 
@@ -102,15 +103,15 @@ def client() -> TestClient:
 
 
 
-Fixture
+### Fixture
 
 
 3.3 et 3.4
 3.4 -> côté tests : une classe Storage qui tient tous les dictionnaires de l'API et sait les remettre à zéro, et une fixture qui l'expose.
 
-conftest :
+`conftest` :
 
-```
+```python
 # tests/conftest.py
 from collections.abc import Iterator
 from dataclasses import dataclass, fields
@@ -164,25 +165,23 @@ def item_velo(client: TestClient) -> dict[str, Any]:
 
 
 
+### 3.4 Isoler l'état en mémoire : la fixture storage
 
+Il faut remplacer l'id global dans les routers `items` et `reservations`
 
-3.4 Isoler l'état en mémoire : la fixture storage
-
-Il faut remplacer l'id global dans les routers items et reservations 
-
-Dans items
-```
+Dans `items`
+```python
 def _next_id() -> int:
     return max(FAKE_DB, default=0) + 1
 ```
 
 remplace :
-```
+```python
 _next_id = 1
 ```
 
-et 
-```
+Et 
+```python
 # Route pour créer un item (POST)
 @router.post("", response_model=ItemRead, status_code=201)
 def create_item(payload: ItemCreate):
@@ -194,7 +193,7 @@ def create_item(payload: ItemCreate):
 ```
 
 devient
-```
+```python
 # Route pour créer un item (POST)
 @router.post("", response_model=ItemRead, status_code=201)
 def create_item(payload: ItemCreate):
@@ -204,19 +203,19 @@ def create_item(payload: ItemCreate):
     return item
 ```
 
-Même chose dans reservations
-```
+Même chose dans `reservations`
+```python
 _next_id = 1
 ```
 
 devient
-```
+```python
 def _next_id() -> int:
     return max(FAKE_DB, default=0) + 1
 ```
 
 et 
-```
+```python
 @router.post("", response_model=ReservationRead, status_code=201)
 def create_reservation(payload: ReservationCreate):
     global _next_id
@@ -231,7 +230,7 @@ def create_reservation(payload: ReservationCreate):
 ```
 
 devient
-```
+```python
 @router.post("", response_model=ReservationRead, status_code=201)
 def create_reservation(payload: ReservationCreate):
     new_id = _next_id()
@@ -245,12 +244,12 @@ def create_reservation(payload: ReservationCreate):
 ```
 
 (vérifier que docker desktop est ouvert)
-aller dans le répertoire projet-demo/
-relancer docker compose up --build
-vérifier que le test reste valide dans un autre terminal dans projet-demo/ :
+aller dans le répertoire `projet-demo/`
+relancer `docker compose up --build`
+vérifier que le test reste valide dans un autre terminal dans` projet-demo/` :
+```bash
 docker compose run --rm api pytest
-
-
+```
 
 
 
@@ -260,10 +259,9 @@ Réaliser des tests : les fichiers test_items.py et test_reservations.py
 
 3->4.4
 
-test_items.py
+`test_items.py`
 
-
-```
+```python
 from typing import Any
 
 import pytest
@@ -425,10 +423,9 @@ def test_delete_item_absent_renvoie_404(client: TestClient) -> None:
 
 
 
-test_reservations.py
+`test_reservations.py`
 
-
-```
+```python
 from typing import Any
 
 import pytest
@@ -537,10 +534,10 @@ def test_get_reservation_absente_renvoie_404(client: TestClient) -> None:
 
 4.2
 
-test_schemas.py
+`test_schemas.py`
 
 
-```
+```python
 from datetime import date
 
 import pytest
@@ -568,8 +565,8 @@ def test_reservation_valide_est_acceptee() -> None:
 
 
 
-ajouter au conftest 
-```
+Ajouter au `conftest`
+```python
 @pytest.fixture
 def reservation_active(client: TestClient, item_velo: dict[str, Any]) -> dict[str, Any]:
     response = client.post("/reservations", json={
@@ -581,20 +578,16 @@ def reservation_active(client: TestClient, item_velo: dict[str, Any]) -> dict[st
     return response.json()
 ```
 
-dans projet-demo
-
+Dans `projet-demo` :
+```bash
 docker compose up --build
 docker compose run --rm api pytest
-
-
-
-
-
-
-corriger le problème Pydantic v1/v2
-dans ReservationCreate (reservation.py) remplacer le field validator
-
 ```
+
+Corriger le problème Pydantic v1/v2
+Dans `ReservationCreate` (`reservation.py`) remplacer le `field validator`
+
+```python
     @field_validator("date_fin")
     def check_date_fin_after_date_debut(cls, v, values):
         if "date_debut" in values and v <= values["date_debut"]:
@@ -602,9 +595,8 @@ dans ReservationCreate (reservation.py) remplacer le field validator
         return v
 ```
 
- 
 par
-```
+```python
     @model_validator(mode="after")
     def check_dates(self) -> "ReservationCreate":
         if self.date_fin <= self.date_debut:
@@ -612,38 +604,35 @@ par
         return self
 ```
 
-
-importer 
+Importer
+```python
 from pydantic import BaseModel, Field, model_validator
-
-
-
-
-
-gérer les accents (test_lister_filtre_q_ignorant_la_casse)
-
-dans le filtre (items.py)
-
 ```
+
+Gérer les accents (`test_lister_filtre_q_ignorant_la_casse`)
+
+Dans le filtre (`items.py`)
+
+```python
     if q:
         items = [item for item in items if q.lower() in item["titre"].lower()]
 ```
 
-est remplacé par 
+est remplacé par :
 
-```
+```python
 if q:
     qn = _sans_accent(q.lower())
     items = [item for item in items if qn in _sans_accent(item["titre"].lower())]
 ```
 
-on ajoute la fonction à côté de _next_id :
-```
+On ajoute la fonction à côté de _next_id :
+```python
 def _sans_accent(texte: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", texte) if unicodedata.category(c) != "Mn")
 ```
 
-relancer les tests
+Relancer les tests.
 
 plus aucun problème.
 
@@ -651,48 +640,50 @@ plus aucun problème.
 
 
 7.
-
+```bash
 docker compose run --rm api pytest --cov=app --cov-report=term-missing
-
+```
 
 8.
 
-si on casse dans ItemCreate
-
+Si on casse dans `ItemCreate`
+```python
     #model_config = ConfigDict(extra="forbid")
     model_config = ConfigDict()
-
+```
+```bash
 FAILED tests/test_items.py::test_creation_item_invalide_renvoie_422[payload5-couleur] - assert 201 == 422
 ================================================================= 1 failed,
+```
 
 
-
-si on supprime dans reservations.py le raise de l'annulation double
-
+Si on supprime dans `reservations.py` le raise de l'annulation double
+```python
     # if FAKE_DB[reservation_id]["statut"] == "annulee":
     #     raise HTTPException(status_code=409, detail="Réservation déjà annulée")
-
+```
+```bash
 FAILED tests/test_reservations.py::test_annuler_deux_fois_renvoie_409 - assert 200 == 409
 ================================================================= 1 failed, 34 passed, 1 warning in 0.50s =================================================================
+```
 
-
-si on change le model validator des date dans reservation.py
-
+Si on change le model validator des date dans reservation.py
+```python
         #if self.date_fin <= self.date_debut:
         if self.date_fin <self.date_debut:
-
+```
+```bash
 FAILED tests/test_schemas.py::test_dates_egales_sont_refusees_par_le_schema - Failed: DID NOT RAISE <class 'pydantic_core._pydantic_core.ValidationError'>
 ============================================================== 1 failed, 34 passed, 1 warning in 0.54s
+```
 
-
-casser excluse unset true du patch (items.py)
-
+Casser excluse unset true du patch (items.py)
+```python
     #data = payload.model_dump(exclude_unset=True)
     data = payload.model_dump()
-
+```
+```bash
 FAILED tests/test_items.py::test_patch_modifie_un_seul_champ_sans_ecraser_le_reste - fastapi.exceptions.ResponseValidationError: 2 validation errors:
 FAILED tests/test_items.py::test_patch_vide_ne_change_rien - fastapi.exceptions.ResponseValidationError: 3 validation errors:
 ======================================================== 2 failed, 33 passed, 1 warning in 1.20s
-
-
-
+```
