@@ -73,6 +73,7 @@ gearshare/
 └── docker-compose.yml
 ```
 
+Ma structure actuelle (ordre de VS Code)
 ```text
 gearshare/
 ├── backend/
@@ -103,6 +104,7 @@ gearshare/
 ├── .gitignore
 └── docker-compose.yml
 ```
+
 Créez les dossiers vides, puis :
 
 1. **Dépendances.** Ajoutez à `backend/requirements.txt` les quatre bibliothèques dont le backend
@@ -130,7 +132,7 @@ Trois fichiers à écrire :
   l'URL de la base et un booléen d'affichage du SQL (désactivé par défaut). Elle est instanciée
   une seule fois, au niveau du module.
 
-```
+```python
 # app/core/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -145,14 +147,13 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
 ```
 
 
 - **`app/db/session.py`** : l'engine SQLAlchemy et la fabrique de sessions, construits à partir de
   cette configuration. Activez la vérification des connexions mortes (`pool_pre_ping`).
 
-```
+```python
 # app/db/session.py
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -166,12 +167,13 @@ engine = create_engine(
 )
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-
 ```
+
 - **`app/api/deps.py`** : la dépendance `get_db`, qui ouvre une session par requête, la valide si
   tout s'est bien passé, l'annule en cas d'exception, et la ferme **dans tous les cas**. Exposez
   aussi l'alias `DbSession` pour ne pas répéter `Depends(get_db)` partout.
-```
+
+```python
 # app/api/deps.py
 from collections.abc import Generator
 
@@ -190,7 +192,6 @@ def get_db() -> Generator[Session, None, None]:
         raise
     finally:
         db.close()
-
 ```
 
 Puis le fichier **`.env.example`**, commité, qui liste toutes les variables nécessaires avec des
@@ -198,7 +199,7 @@ valeurs de développement : les trois variables attendues par l'image `postgres`
 (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`), `DATABASE_URL` au format
 `postgresql+psycopg://utilisateur:motdepasse@hote:port/base`, et `SQL_ECHO`. Copiez-le :
 
-```
+```python
 # Service db (lues aussi par Compose pour la substitution ${...})
 POSTGRES_USER=gearshare
 POSTGRES_PASSWORD=gearshare
@@ -229,12 +230,10 @@ localhost ne serait correct que pour un programme lancé directement sur ton PC 
 avoir ajouté un objet à la session ? L'objet est-il en base ? Notez votre réponse, vous la
 vérifierez à l'étape 4.
 
-```
-Le add() ne fait que placer l’objet dans la session (en mémoire). Selon les options (autoflush, flush() explicite), un INSERT peut avoir été envoyé, mais il reste dans la transaction en cours, qui n’est pas validée.
+
+Réponse : Le add() ne fait que placer l’objet dans la session (en mémoire). Selon les options (autoflush, flush() explicite), un INSERT peut avoir été envoyé, mais il reste dans la transaction en cours, qui n’est pas validée.
 Quand la route lève une exception, le except de get_db exécute rollback() : la transaction est annulée, et le commit() n’est jamais atteint.
 Donc l’objet n’est pas en base, même si un flush a eu lieu avant l’exception.
-```
-
 
 ---
 
@@ -258,7 +257,7 @@ Enfin, faites en sorte que `app/models/__init__.py` importe `Base` et les trois 
 fichier n'est pas cosmétique : relisez dans le cours la partie sur Alembic pour comprendre ce qui
 se passe sans lui.
 
-```
+```python
 # app/models/base.py
 from sqlalchemy.orm import DeclarativeBase
 
@@ -266,13 +265,14 @@ from sqlalchemy.orm import DeclarativeBase
 class Base(DeclarativeBase):
     pass
 ```
-```
-Pour les fichiers app/models/user.py item.py et reservation.py, on traduit le SQL du schema.sql de la séance 3 en SQLAlchemy.
-Les fichiers app/models/ sont basés sur SQLalchemy (ORM), ils parlent à la base de données, ils décrivent les tables SQL et les colonnse, ils contiennent les relations, clés étrangères, contraintes (CHEK, Numeric(8,2)...). Une instance est un objet branché sur la base. Equivalent aux entités en PHP.
 
-Ne pas confondre avec app/schemas/ qui utilisent la bibliothèque Pydantic, ils parlent à l'API (requêtes et réponses HTTP, décrivent le format des JSON échangés, contiennent quels champs sont visibles, optionnels, en lecture ou écriture. Une instance est un objet neutre, juste des données validées)
-```
-```
+
+Pour les fichiers `app/models/user.py` `item.py` et `reservation.py`, on traduit le SQL du `schema.sql` de la séance 3 en SQLAlchemy.
+Les fichiers `app/models/` sont basés sur SQLalchemy (ORM), ils parlent à la base de données, ils décrivent les tables SQL et les colonnse, ils contiennent les relations, clés étrangères, contraintes (CHEK, Numeric(8,2)...). Une instance est un objet branché sur la base. Equivalent aux entités en PHP.
+
+Ne pas confondre avec `app/schemas/` qui utilisent la bibliothèque Pydantic, ils parlent à l'API (requêtes et réponses HTTP, décrivent le format des JSON échangés, contiennent quels champs sont visibles, optionnels, en lecture ou écriture. Une instance est un objet neutre, juste des données validées)
+
+```python
 # app/models/item.py
 from datetime import datetime
 from decimal import Decimal
@@ -306,7 +306,8 @@ class Item(Base):
         back_populates="item", cascade="all, delete-orphan"
     )
 ```
-```
+
+```python
 # app/models/reservation.py
 from datetime import date
 
@@ -338,7 +339,8 @@ class Reservation(Base):
     item: Mapped["Item"] = relationship(back_populates="reservations")
     borrower: Mapped["User"] = relationship(back_populates="reservations")
 ```
-```
+
+```python
 # app/models/user.py
 from datetime import datetime
 
@@ -363,7 +365,8 @@ class User(Base):
     items: Mapped[list["Item"]] = relationship(back_populates="owner")
     reservations: Mapped[list["Reservation"]] = relationship(back_populates="borrower")
 ```
-```
+
+```python
 # app/models/__init__.py
 from app.models.base import Base
 from app.models.user import User
@@ -389,7 +392,7 @@ Puis branchez-le sur votre application, dans `alembic/env.py` :
 Dans `alembic.ini`, laissez `sqlalchemy.url` vide : ce fichier est commité, votre mot de passe n'a
 rien à y faire.
 
-```
+```python
 # alembic/env.py
 from app.core.config import settings
 from app.models.base import Base
@@ -409,7 +412,6 @@ rétablir la lecture normale :
 # url = config.get_main_option("sqlalchemy.url")
     # url = config.set_main_option("sqlalchemy.url", settings.database_url)
     url = config.get_main_option("sqlalchemy.url")
-
 ```
 
 
@@ -426,7 +428,7 @@ docker compose run --rm backend alembic revision --autogenerate -m "schema initi
 > doit pointer sur `localhost` et non `db`, et le port de la base doit être publié. Le plus simple
 > est de tout faire dans le conteneur.
 
-```
+```python
 docker-compose.yml
 
 # services:
@@ -493,7 +495,8 @@ services:
 volumes:
   pgdata:
 ```
-```
+
+```text
 # requirements.txt
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
@@ -506,7 +509,8 @@ alembic~=1.0
 pydantic-settings~=2.0
 alembic
 ```
-```
+
+```text
 # backend/.dockerignore
 
 __pycache__/
@@ -517,7 +521,7 @@ __pycache__/
 .env
 ```
 
-```
+```bash
 C:\Users\lubin\Documents\Git\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>docker compose up -d db
 time="2026-10-25T12:31:26+01:00" level=warning msg="The \"POSTGRES_USER\" variable is not set. Defaulting to a blank string."
 time="2026-10-25T12:31:26+01:00" level=warning msg="The \"POSTGRES_PASSWORD\" variable is not set. Defaulting to a blank string."
@@ -526,19 +530,17 @@ time="2026-10-25T12:31:26+01:00" level=warning msg="The \"POSTGRES_DB\" variable
  ✔ Network projet-gearshare_default  Created                                                                       0.1s
  ✔ Volume projet-gearshare_pgdata    Created                                                                       0.0s
  ✔ Container projet-gearshare-db-1   Started                                                                       0.6s
-
-
 ```
 
-```
+
 dossier corrompu... (antivirus ?)
 Je change de dossier
 C'est pénible
-```
-```
-faire les modifs précédentes sur alembic/env et les autres fichiers
-```
-```
+
+
+Faire les modifs précédentes sur `alembic/env` et les autres fichiers
+
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare\backend>docker compose run --rm backend alembic revision --autogenerate -m "schema initial"
 [+] Creating 1/1
  ✔ Container projet-gearshare-db-1  Running                                                                                                                                                                                                                                                                                                                                                                                                                           0.0s
@@ -568,16 +570,16 @@ INFO  [alembic.autogenerate.compare.constraints] Detected added index 'ix_reserv
 - [✔] les index sur les clés étrangères sont créés ;
 - [✔] le `downgrade()` supprime bien tout, dans l'ordre inverse.
 
-```
-Suppression de ON DELETE CASCADE sur les réservations models/reservation.py
-et cascade="all, delete-orphan" dans models/item.py
+
+Suppression de `ON DELETE CASCADE` sur les réservations `models/reservation.py`
+et `cascade="all, delete-orphan"` dans `models/item.py`
 ```
 
 S'il manque quelque chose, ne corrigez pas la migration : corrigez le **modèle**, supprimez le
 fichier, régénérez.
 
 
-```
+```bash
 del alembic\versions\809e331e258e_schema_initial.py
 rmdir /s /q alembic\versions\__pycache__
 docker compose run --rm backend alembic heads
@@ -595,7 +597,7 @@ docker compose run --rm backend alembic downgrade base
 docker compose run --rm backend alembic upgrade head
 ```
 
-```
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare\backend>docker compose run --rm backend alembic upgrade head
 [+] Creating 1/1
  ✔ Container projet-gearshare-db-1  Running                                                                                                                                    0.0s
@@ -648,8 +650,7 @@ une migration non réversible est un problème que vous traînerez tout le proje
 Exercice court mais important. Insérez d'abord deux items en base avec `psql` (il vous faudra un
 utilisateur pour la clé étrangère). 
 
-```
-
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare\backend>docker compose exec db psql -U gearshare -d gearshare -c "INSERT INTO users (email, password_hash, display_name) VALUES ('bob@example.com', 'x', 'Bob') RETURNING id;"
  id
 ----
@@ -670,9 +671,8 @@ C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearsha
 Puis renommez, dans le modèle `Item`, la colonne `tarif_jour`
 en `prix_jour`, et générez :
 
-```
-models/item.py :
-
+`models/item.py` :
+```python
     # tarif_jour: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
     prix_jour: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
 
@@ -683,7 +683,8 @@ models/item.py :
 ```bash
 docker compose run --rm backend alembic revision --autogenerate -m "renommage tarif_jour"
 ```
-```
+
+```bash
 docker compose run --rm backend alembic revision --autogenerate -m "renommage tarif_jour"
 [+] Creating 1/1
  ✔ Container projet-gearshare-db-1  Running                                                                                                                                    0.0s
@@ -708,13 +709,13 @@ l'appliquiez ? Notez votre prédiction, puis **corrigez la migration à la main*
 renomme la colonne sans perte (le cours vous donne l'opération Alembic à utiliser).
 N'oubliez pas le `downgrade()`.
 
-```
+
 Prédiction : 
 Avec deux lignes déjà en base, l’add_column ... NOT NULL sans valeur par défaut échoue sur PostgreSQL (column contains null values). Et si on contournait ça avec un défaut, le drop_column détruirait les tarifs : les deux items resteraient mais sans leur prix. Les contraintes CHECK nommées (tarif_jour_positif) risquent aussi d’apparaître dans la migration, car la condition change.
-```
-```
-correction du fichier de migration :
 
+Correction du fichier de migration :
+
+```python
 # def upgrade() -> None:
 #     """Upgrade schema."""
 #     # ### commands auto generated by Alembic - please adjust! ###
@@ -746,7 +747,7 @@ docker compose run --rm backend alembic upgrade head
 docker compose exec db psql -U gearshare -d gearshare -c "SELECT id, titre, prix_jour FROM items;"
 ```
 
-```
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>docker compose run --rm backend alembic upgrade head
 [+] Creating 1/1
  ✔ Container projet-gearshare-db-1  Running                                                                                                                                    0.0s
@@ -761,22 +762,25 @@ C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearsha
   2 | Réchaud        |      4.00
 (2 rows)
 ```
-```
+
 Les deux articles sont toujours là et le nom de la colonne tarif_jour a été renommée correctement.
-```
 
 
 Puis **revenez en arrière** (`downgrade -1`, supprimez le fichier de migration, remettez
 `tarif_jour` dans le modèle) : c'était un exercice, on garde le nom initial.
-```
+
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>docker compose run --rm backend alembic downgrade -1
 [+] Creating 1/1
  ✔ Container projet-gearshare-db-1  Running                                                                                                                                    0.0s
 INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
 INFO  [alembic.runtime.migration] Will assume transactional DDL.
-INFO  [alembic.runtime.migration] Running downgrade 610f8d868f9b -> 5e526ec40fdd, renommage tarif_jour
+INFO  [alembic.runtime.migration] Running downgrade 610f8d868f9b -> 5e526ec40fdd, 
 ```
-```
+
+renommage `tarif_jour`
+
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>docker compose exec db psql -U gearshare -d gearshare -c "SELECT id, titre, prix_jour FROM items;"
 ERROR:  column "prix_jour" does not exist
 LINE 1: SELECT id, titre, prix_jour FROM items;
@@ -790,9 +794,8 @@ C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearsha
   2 | Réchaud        |       4.00
 (2 rows)
 ```
-```
+
 Supprimer aussi __pycache__ de alembic/versions/
-```
 
 
 
@@ -809,10 +812,10 @@ avant de passer au suivant :
 1. **`app/core/exceptions.py`** : une exception métier de base, et une sous-classe par famille
    d'erreur — ressource introuvable, conflit métier, accès refusé. Elles transportent un message
    lisible. Aucune ne connaît HTTP.
-```
-Le vocabulaire des erreurs
-```
-```
+
+Le vocabulaire des erreurs :
+
+```python
 # app/core/exceptions.py
 class DomainError(Exception):
     """Exception métier de base : message lisible, aucune notion d'HTTP."""
@@ -828,15 +831,16 @@ class ConflitReservation(DomainError):
 
 class AccesRefuse(DomainError):
     """Accès refusé — sera traduite en 403."""
-
 ```
+
 2. **`app/schemas/item.py`** : un schéma de création, un schéma de modification (tous les champs
    optionnels) et un schéma de lecture, construit depuis un objet SQLAlchemy.
-```
+
+
 Le contrat de l'API
 ItemRead doit maintenant pouvoir être construit depuis un objet SQLAlchemy (le modèle, pas un dict)
-```
-```
+
+```python
 class ItemRead(BaseModel):
     model_config = ConfigDict(from_attributes=True) # construit depuis un objet ORM
     id: int
@@ -845,21 +849,21 @@ class ItemRead(BaseModel):
     tarif_jour: float
     disponible: bool
 ```
-```
+
 + ajouter :
+```python
 class ItemCreate(BaseModel):
     owner_id: int = Field(ge=1)
 ```
 
-
 3. **`app/repositories/item.py`** : une classe `ItemRepository` qui sait récupérer un item,
    lister (avec pagination, recherche texte et filtre sur la disponibilité), ajouter et supprimer.
    **Aucun `commit()`** : relisez pourquoi dans le cours.
-```
-seul qui touche la base
+
+Seul qui touche la base
 classe qui reçoit la session et encapsule toutes les requêtes SQL pour les items
-```
-```
+
+```python
 # app/repositories/item.py
 from sqlalchemy import Select
 from sqlalchemy import select
@@ -897,7 +901,7 @@ class ItemRepository:
    l'exception « introuvable » quand l'item n'existe pas. Pas d'autre règle pour l'instant
    (l'ownership viendra en séance 5).
 
-```
+```python
 # app/services/item.py
 from sqlalchemy.orm import Session
 
@@ -944,10 +948,10 @@ class ItemService:
 5. **`app/routers/items.py`** : les cinq routes du CRUD, avec `response_model` et les codes de
    statut de la séance 1. Le router ne fait que traduire : schéma en entrée, appel au service,
    schéma en sortie.
-```
-app/routers/items.py avant :
-```
-```
+
+`app/routers/items.py` avant :
+
+```python
 # app/routers/items.py
 import unicodedata
 
@@ -1033,10 +1037,10 @@ def delete_item(item_id: int = Path(ge=1)):
     del FAKE_DB[item_id]
 
 ```
-```
-app/routers/items.py mis à jour :
-```
-```
+
+`app/routers/items.py` mis à jour :
+
+```python
 # app/routers/items.py
 from fastapi import APIRouter, Path, Query, Response
 
@@ -1094,8 +1098,11 @@ Dans `app/main.py`, incluez le router, gardez la route `/health`, et branchez la
 exceptions métier en codes HTTP. À vous de choisir entre un `try`/`except` dans chaque
 route et un gestionnaire d'exceptions global. Justifiez ce choix en une
 phrase dans `docs/review-migrations.md`.
-```
-app/main.py avant :
+
+
+`app/main.py` avant :
+
+```python
 # app/main.py
 from fastapi import FastAPI
 from app.routers import items, reservations
@@ -1108,8 +1115,10 @@ app.include_router(reservations.router)
 def health() -> dict[str, str]:
     return {"status": "ok"}
 ```
-```
-app/main.py après :
+
+`app/main.py` après :
+
+```python
 # app/main.py
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -1146,9 +1155,9 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 ```
 
-```
-ajustement de deps.py
+Ajustement de `deps.py`
 
+```python
 # app/api/deps.py
 from collections.abc import Generator
 from typing import Annotated
@@ -1187,7 +1196,7 @@ curl -i http://localhost:8000/items/9999          # attendu : 404 avec {"detail"
 docker compose exec db psql -U gearshare -d gearshare -c "SELECT * FROM items;"
 ```
 
-```
+```bash
 docker compose up -d --build
 docker compose restart backend
 curl -X POST http://localhost:8000/items -H "Content-Type: application/json" -d "{\"owner_id\": 1, \"titre\": \"Velo de ville\", \"tarif_jour\": 8.5}"
@@ -1214,9 +1223,8 @@ C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearsha
 ```
 
 La dernière commande est celle qui compte : **la donnée est-elle réellement en base ?
-```
-Oui car le SELECT le montre. On a bien les objets. le backend ne fait plus que lire/écrire dans PostgreSQL, il n'est plus le détenteur des données.
-```
+
+Réponse : Oui car le SELECT le montre. On a bien les objets. le backend ne fait plus que lire/écrire dans PostgreSQL, il n'est plus le détenteur des données.
 
 ** Redémarrez
 ensuite tout et refaites un `GET /items` : les données doivent survivre.
@@ -1225,7 +1233,8 @@ ensuite tout et refaites un `GET /items` : les données doivent survivre.
 docker compose restart
 curl http://localhost:8000/items
 ```
-```
+
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>docker compose restart
 [+] Restarting 3/3
  ✔ Container projet-gearshare-backend-1   Started                                                                                          1.1s
@@ -1235,14 +1244,17 @@ C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearsha
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>curl http://localhost:8000/items
 [{"id":1,"titre":"Tente 3 places","description":null,"tarif_jour":12.5,"disponible":true},{"id":2,"titre":"Réchaud","description":null,"tarif_jour":4.0,"disponible":true},{"id":3,"titre":"Velo de ville","description":null,"tarif_jour":8.5,"disponible":true}]
 ```
-```
-Les données survivent au redémarrage complet des services. La mémoire du conteneur backend est jetable et recréée ; l'état de l'application vit dans le volume de PostgreSQL, qui n'est pas affecté par un restart. C'est le changement d'architecture du TP : le backend est devenu sans état (stateless), la base est la seule source de vérité.
-```
+
+
+Réponse : Les données survivent au redémarrage complet des services. La mémoire du conteneur backend est jetable et recréée ; l'état de l'application vit dans le volume de PostgreSQL, qui n'est pas affecté par un restart. C'est le changement d'architecture du TP : le backend est devenu sans état (stateless), la base est la seule source de vérité.
+
+
 Revenez enfin sur le point de contrôle de l'étape 1 : provoquez une erreur après un ajout (par
 exemple un `POST` avec un `owner_id` qui n'existe pas) et vérifiez en base que rien n'a été écrit.
 Quel code HTTP obtenez-vous ? Est-ce le bon ? Si c'est une `500`, demandez-vous quelle couche
 devrait détecter ce cas.
-```
+
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>curl -i -X POST http://localhost:8000/items -H "Content-Type: application/json" -d "{\"owner_id\": 999, \"titre\": \"Item fantome\", \"tarif_jour\": 5}"
 HTTP/1.1 500 Internal Server Error
 date: Sun, 25 Oct 2026 16:23:36 GMT
@@ -1259,10 +1271,11 @@ C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearsha
   2 | Réchaud
   3 | Velo de ville
 (3 rows)
-
 ```
-services/item.py
 
+`services/item.py`
+
+```python
     # def create(self, data: ItemCreate) -> Item:
     #     item = Item(**data.model_dump())
     #     return self.repo.add(item)
@@ -1272,13 +1285,14 @@ services/item.py
         item = Item(**data.model_dump())
         return self.repo.add(item)
 ```
+
 Ce n'est pas le bon code. Une 500 signifie "le serveur a un bug", alors que le client a envoyé une référence invalide. Le rollback protège les données, mais le code de retour est faux.
 
 Quelle couche doit détecter ce cas ?
 
 Le service : c’est lui qui porte les règles métier ("le propriétaire doit exister"). Le repository ne fait que de l’accès aux données, et le router ne doit pas connaître SQLAlchemy.
-```
-```
+
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>curl -i -X POST http://localhost:8000/items -H "Content-Type: application/json" -d "{\"owner_id\": 999, \"titre\": \"Item fantome\", \"tarif_jour\": 5}"
 HTTP/1.1 404 Not Found
 date: Sun, 25 Oct 2026 16:28:35 GMT
@@ -1288,13 +1302,14 @@ content-type: application/json
 
 {"detail":"Utilisateur 999 introuvable"}
 ```
+
 ---
 
 ## Étape 5 — Débusquer un N+1
 
 Mettez `SQL_ECHO=true` dans votre `.env` et redémarrez le backend.
 
-```
+```bash
 docker compose up -d backend
 ```
 
@@ -1307,7 +1322,7 @@ affiché, et ajoutez-le comme champ du schéma de lecture d'un item. Ce schéma 
 `email` ni `password_hash`** : n'exposez jamais un utilisateur complet dans la représentation
 d'une autre ressource.
 
-```
+```python
 # app/schemas/user.py
 
 from pydantic import BaseModel, ConfigDict
@@ -1318,9 +1333,10 @@ class OwnerRead(BaseModel):
     id: int
     display_name: str
 ```
-```
-Dans app/schemas/item.py, ajoutez le champ à ItemRead
 
+Dans `app/schemas/item.py`, ajoutez le champ à ItemRead
+
+```python
 from app.schemas.user import OwnerRead
 
 class ItemRead(BaseModel):
@@ -1333,11 +1349,10 @@ class ItemRead(BaseModel):
     owner: OwnerRead
 ```
 
-
 Insérez une vingtaine d'items en une seule commande SQL (indice : `INSERT ... SELECT` avec
 `generate_series`), appelez `GET /items?limit=50`, et **comptez les requêtes SQL dans les logs** :
 
-```
+```bash
 docker compose exec db psql -U gearshare -d gearshare -c "INSERT INTO users (email, password_hash, display_name) SELECT 'user' || g || '@example.com', 'x', 'User ' || g FROM generate_series(1, 20) AS g;"
 docker compose exec db psql -U gearshare -d gearshare -c "INSERT INTO items (owner_id, titre, tarif_jour, disponible) SELECT id, 'Objet ' || id, 5 + id, true FROM users WHERE email LIKE 'user%@example.com';"
 ```
@@ -1347,51 +1362,52 @@ curl -s "http://localhost:8000/items?limit=50" > /dev/null
 docker compose logs --since 30s backend | grep -c "SELECT"
 ```
 
-```
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>curl -s "http://localhost:8000/items?limit=50" > NUL
 
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>docker compose logs --since 5s backend | find /c "SELECT"
 22
 ```
 
-
 Combien de requêtes pour une seule page ? D'où viennent-elles ? Le N+1 est ici caché dans la
 sérialisation : trouvez quelle ligne de votre code le déclenche, sans que vous ayez écrit de
 boucle. Corrigez-le dans la méthode de liste de `ItemRepository` (le cours vous donne l'option de
 chargement à utiliser), puis recomptez.
 
-```
+
 23 items pour 21 propriétaires distincts (Bob en a 3, partagés par la mémoïsation de l’identity map), 
 -> 1 requête sur items (la liste)
 + 21 requêtes SELECT FROM users WHERE users.id = ...
 (une par propriétaire distinct) 
 = 22 requêtes
-```
-```
+
+
 Où est le N+1 ? Dans la sérialisation, pas dans une boucle : FastAPI valide chaque Item avec ItemRead, et pour remplir le champ owner, Pydantic lit item.owner. Cet accès déclenche un chargement paresseux (lazy="select", valeur par défaut) : un SELECT users.* WHERE users.id = ? par propriétaire. La ligne coupable est donc owner: OwnerRead dans ItemRead. Dans les logs, on reconnaît le motif : une requête sur items, puis une série de SELECT ... FROM users WHERE users.id = %(pk_1)s.
-```
 
-```
-correction : dans ItemRepository.list
 
+correction : dans `ItemRepository.list`
+
+```python
     def list(self, *, skip: int = 0, limit: int = 20,
              search: str | None = None, available_only: bool = False) -> list[Item]:
         # stmt = select(Item).offset(skip).limit(limit)
         stmt = select(Item).options(joinedload(Item.owner)).offset(skip).limit(limit)
 ```
-```
+
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>curl -s "http://localhost:8000/items?limit=50" > NUL
 
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>docker compose logs --since 5s backend | find /c "SELECT"
 1
 ```
-```
-vec joinedload(Item.owner), on dit à SQLAlchemy "charge les propriétaires dès la requête initiale". 
+
+Avec joinedload(Item.owner), on dit à SQLAlchemy "charge les propriétaires dès la requête initiale". 
 Il émet un seul SELECT avec un JOIN entre items et users. Quand Pydantic lit item.owner, l’objet est déjà là donc pas besoin de requête.
 Donc il émet une seule requête.
-```
-```
-On remet SQL_ECHO=false dans .env
+
+
+On remet `SQL_ECHO=false` dans `.env`
+```bash
 docker compose up -d backend
 ```
 
@@ -1416,7 +1432,7 @@ Complétez le `docker-compose.yml` :
 - le service `frontend` reste celui du TP 1 : **pas de `env_file`**, il n'a besoin que de
   `API_BASE_URL` (relisez pourquoi dans le [cours 1](../cours/cours1-frontend.md)).
 
-```
+```yml
 services:
   db:
     image: postgres:16
@@ -1489,10 +1505,10 @@ Avant de trancher, répondez par écrit, dans `docs/choix-migrations.md`, à ces
 Puis écrivez votre choix et sa justification en quelques lignes. Il n'y a pas de mauvaise
 réponse, il y a des réponses non justifiées.
 
-```
-docker-compoes.yml : le service migrate doit avoir depends_on: db: condition: service_healthy (attendre que la base soit prête), et le backend doit avoir depends_on: migrate: condition: service_completed_successfully.
-```
-```
+
+Réponse : `docker-compoes.yml` : le service migrate doit avoir depends_on: db: condition: service_healthy (attendre que la base soit prête), et le backend doit avoir depends_on: migrate: condition: service_completed_successfully.
+
+```yml
 services:
   db:
     image: postgres:16
@@ -1551,11 +1567,10 @@ volumes:
   pgdata:
 ```
 
-```
 sur le dépôt cloné par le correcteur, l’image doit être autonome, sans dépendre des montages
-Dockerfile : ajouter COPY alembic.ini . et COPY alembic ./alembic
-```
-```
+Dockerfile : ajouter `COPY alembic.ini .` et `COPY alembic ./alembic`
+
+```Dockerfile
 FROM python:3.12-slim
 
 WORKDIR /code
@@ -1575,7 +1590,6 @@ EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-
 ### 6.3. Vérifiez depuis zéro
 
 ```bash
@@ -1583,12 +1597,12 @@ docker compose down -v          # ⚠️ supprime aussi le volume : la base repa
 docker compose up --build
 ```
 
-```
+```bash
 docker compose down -v
 docker compose up --build -d
 ```
 
-```
+```bash
 db-1  | 2026-10-26 09:22:27.603 UTC [1] LOG:  database system is ready to accept connections
 migrate-1  | INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
 migrate-1  | INFO  [alembic.runtime.migration] Will assume transactional DDL.
@@ -1616,7 +1630,7 @@ docker compose ps -a
 docker compose exec db psql -U gearshare -d gearshare -c "SELECT * FROM alembic_version;"
 ```
 
-```
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>docker compose ps -a
 NAME                          IMAGE                       COMMAND                  SERVICE    CREATED          STATUS                      PORTS
 projet-gearshare-backend-1    projet-gearshare-backend    "uvicorn app.main:ap…"   backend    38 seconds ago   Up 30 seconds               0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
@@ -1655,20 +1669,21 @@ docker compose exec db psql -U gearshare -d gearshare \
 docker compose exec db psql -U gearshare -d gearshare -c "INSERT INTO users (email, display_name, password_hash) VALUES ('demo@esiee.fr', 'Démo', 'x');"
 docker compose exec db psql -U gearshare -d gearshare -c "SELECT id, email FROM users;"
 ```
-```
-Dans le frontend on ajoute owner_id en dur
-Dans routers/items.py dans la route POST /items
 
+Dans le frontend on ajoute `owner_id` en dur.
+Dans `routers/items.py` dans la route `POST /items`
+
+```python
     data = {
         **valeurs, 
         "description": description or None, # "" -> absence de description
         "owner_id": 1,  # TODO séance 5
     }  
 ```
+
 ```bash
 docker compose up -d --build frontend
 ```
-
 
 Marquez cette valeur d'un commentaire `# TODO séance 5` : en séance 5, le propriétaire sera
 l'utilisateur connecté, déduit du jeton par le backend, et ce champ disparaîtra du formulaire.
@@ -1691,9 +1706,10 @@ Vous avez construit `items` couche par couche. Construisez maintenant `reservati
 façon, en suivant **exactement** l'architecture de `items` : mêmes conventions de nommage, même
 découpage, mêmes exceptions métier. Le modèle `Reservation` existe déjà (étape 2).
 
-```
-remplacer l'ancien schemas/reservation.py
 
+Remplacer l'ancien `schemas/reservation.py`
+
+```python
 # app/schemas/reservation.py
 from pydantic import BaseModel, Field, model_validator
 from datetime import date
@@ -1716,10 +1732,11 @@ class ReservationRead(BaseModel):
     date_debut: date
     date_fin: date
     statut: Literal["active", "annulee"] = "active"
+```
 
 par :
-```
-```
+
+```python
 # app/schemas/reservation.py
 from datetime import date
 from typing import Literal
@@ -1754,9 +1771,7 @@ class ReservationRead(BaseModel):
     statut: str
 ```
 
-
-
-```
+```python
 # app/repositories/user.py
 from sqlalchemy.orm import Session
 
@@ -1770,8 +1785,10 @@ class UserRepository:
     def get(self, user_id: int) -> User | None:
         return self.db.get(User, user_id)
 ```
-```
-Ajouter dans # app/repositories/reservation.py
+
+Ajouter dans `# app/repositories/reservation.py`
+
+```python
     def list(self, *, skip: int = 0, limit: int = 20,
              item_id: int | None = None) -> list[Reservation]:
         stmt = select(Reservation).order_by(Reservation.id).offset(skip).limit(limit)
@@ -1780,10 +1797,9 @@ Ajouter dans # app/repositories/reservation.py
         return list(self.db.scalars(stmt))
 ```
 
-```
+Remplacer l'ancien `services/reservation.py`
 
-Remplacer l'ancien services/reservation.py
-
+```python
 # app/services/reservation.py
 from datetime import date
 
@@ -1813,10 +1829,11 @@ class ReservationService:
             Reservation(item_id=item_id, borrower_id=borrower_id,
                         date_debut=debut, date_fin=fin, statut="active")
         )
+```
 
 par :
-```
-```
+
+```python
 # app/services/reservation.py
 from sqlalchemy.orm import Session
 
@@ -1864,9 +1881,11 @@ class ReservationService:
         reservation.statut = "annulee"
         return reservation
 ```
-```
-remplacer l'ancien routers/reservations.py
 
+
+Remplacer l'ancien `routers/reservations.py`
+
+```python
 # app/routers/reservations.py
 from fastapi import APIRouter, HTTPException, Path, Query
 from datetime import date
@@ -1914,10 +1933,11 @@ def cancel_reservation(reservation_id: int = Path(ge=1)):
         raise HTTPException(status_code=409, detail="Réservation déjà annulée")
     FAKE_DB[reservation_id]["statut"] = "annulee"
     return FAKE_DB[reservation_id]
+```
 
 par :
-```
-```
+
+```python
 # app/routers/reservations.py
 from fastapi import APIRouter, Path, Query
 
@@ -1955,7 +1975,6 @@ def patch_reservation(payload: ReservationUpdate, db: DbSession,
     return ReservationService(db).cancel(reservation_id)
 ```
 
-
 ### 7.1. Le contrat
 
 Routes attendues :
@@ -1987,10 +2006,9 @@ facile de raisonner sur les cas où il n'y a **pas** de conflit.
 Décidez aussi, et notez-le : deux réservations jointives (l'une finit le jour où l'autre commence)
 sont-elles en conflit ? Votre requête doit refléter cette décision.
 
-```
+Réponse : 
 Les jointives ne sont pas en conflit.
 Le CHECK date_fin > date_debut impose au moins un jour d'écart, donc une réservation d'un jour est 2026-11-10 -> 2026-11-11. Cela revient à un un intervalle semi-ouvert [debut, fin[ : date_fin est le jour de restitution, pas un jour d’utilisation. Si date_fin était inclusive, une location d’un jour serait debut == fin, ce que la contrainte interdit. La requête est donc date_debut < fin AND date_fin > debut, avec des inégalités strictes
-```
 
 
 ### 7.3. Vérifiez
@@ -2004,10 +2022,11 @@ votre plan de tests pour le service : le cours 2 montre comment l'automatiser av
 Contrôlez aussi la migration : si votre modèle `Reservation` a évolué depuis le schéma initial,
 générez une migration, relisez-la et testez son `downgrade()`.
 
-```
+```bash
 docker compose exec db psql -U gearshare -d gearshare -c "INSERT INTO users (email, password_hash, display_name) VALUES ('alice@example.com', 'x', 'Alice') RETURNING id;"
 ```
-```
+
+```bash
 C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>curl -i -X POST http://localhost:8000/reservations -H "Content-Type: application/json" -d "{\"item_id\": 1, \"borrower_id\": 2, \"date_debut\": \"2026-11-01\", \"date_fin\": \"2026-11-05\"}"
 HTTP/1.1 201 Created
 date: Mon, 26 Oct 2026 12:01:22 GMT
@@ -2067,7 +2086,8 @@ C:\dev\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearsha
   6 |       1 | 2026-11-20 | 2026-11-25 | active
 (5 rows)
 ```
-```
+
+```bash
 docker compose run --rm backend alembic revision --autogenerate -m "verif reservations"
 [+] Creating 1/1
  ✔ Container projet-gearshare-db-1  Running                                                                                                                   0.0s
@@ -2087,8 +2107,10 @@ INFO  [alembic.ddl.postgresql] Detected sequence named 'reservations_id_seq' as 
 INFO  [alembic.ddl.postgresql] Detected sequence named 'users_id_seq' as owned by integer column 'users(id)', assuming SERIAL and omitting
   Generating /code/alembic/versions/a23565de091c_verif_reservations.py ...  done
 ```
-```
-pas d'évolution du modèle :
+
+Pas d'évolution du modèle :
+
+```python
 def upgrade() -> None:
     """Upgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
@@ -2102,8 +2124,6 @@ def downgrade() -> None:
     pass
     # ### end Alembic commands ###
 ```
-
-
 
 ### 7.4. Relisez
 
@@ -2135,21 +2155,24 @@ votre frontend ne savait gérer que le `422` : ajoutez le `409` aux erreurs affi
 formulaire de réservation (le cours 1 montre comment). Vérifiez dans le navigateur
 qu'une réservation en conflit affiche un message clair, et non une page d'erreur.
 
-```
+Réponse : 
 Dans le frontend, le contrat a changé
 une réservation est faite par quelqu'un
-le backend exige un borrower_id
-api_client
+le backend exige un `borrower_id`
 
+`api_client`
+```python
 def create_reservation(self, item_id: int, date_debut: date, date_fin: date) -> dict[str, Any]:
         return self._send(
             "POST",
             "/reservations",
             json={"item_id": item_id, "date_debut": date_debut.isoformat(), "date_fin": date_fin.isoformat()},
         )
+```
 
 devient :
 
+```python
     def create_reservation(self, item_id: int, date_debut: date, date_fin: date) -> dict[str, Any]:
         return self._send(
             "POST",
@@ -2161,13 +2184,12 @@ devient :
                 "borrower_id": 2,  # TODO séance 5 : déduit du jeton
             },
         )
-
-
 ```
-```
+
 Ajouter le 409 au formulaire de réservation
-create_reservation_page dans le routeur frontend de reservation
+`create_reservation_page` dans le routeur frontend de `reservation`
 
+```python
 try:
         api_client.create_reservation(item_id, date_debut, date_fin)
     except ApiError as exc:
@@ -2181,9 +2203,11 @@ try:
             status_code=422,
         )
     return RedirectResponse(f"/items/{item_id}?message=reservee", status_code=303)
+```
 
 devient 
 
+```python
     try:
         api_client.create_reservation(item_id, date_debut, date_fin)
     except ApiError as exc:
@@ -2197,8 +2221,8 @@ devient
             status_code=exc.status_code,
         )
     return RedirectResponse(f"/items/{item_id}?message=reservee", status_code=303)
-
 ```
+
 ---
 
 ## Ce que vous devez me rendre à la fin du TP 2
