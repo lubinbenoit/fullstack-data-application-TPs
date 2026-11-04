@@ -44,11 +44,12 @@ docker compose exec db psql -U gearshare -d gearshare
 
 Dans `psql`, affichez la version du serveur, listez les tables (`\dt`, aucune pour l'instant) et
 quittez (`\q`).
-```
-On a psql (16.15 (Debian 16.15-1.pgdg13+2)),
+
+On a :
+```bash
+psql (16.15 (Debian 16.15-1.pgdg13+2)),
 \dt
 Did not find any relations.
-
 ```
 > 💡 Si vous préférez un client graphique, DBeaver ou l'extension PostgreSQL de VS Code se
 > connectent sur `localhost:5432`. Mais **sachez vous servir de `psql`** : sur un serveur distant,
@@ -103,7 +104,8 @@ seed du projet.
 **Vérifiez** avec `\dt`, puis `\d items` et `\d reservations` : vous devez voir les colonnes, la
 clé primaire, les contraintes `CHECK` et les clés étrangères. Si une contrainte manque, corrigez
 maintenant.
-```
+
+```bash
 gearshare=# \dt
              List of relations
  Schema |     Name     | Type  |   Owner   
@@ -187,7 +189,7 @@ hashs.
 | 3 | Appareil photo | Chloé | 2026-09-15 | 2026-09-20 | active |
 
 
-```
+```bash
 PS C:\Users\lubin\Documents\Git\fullstack-data-application-2026\seances\seance-3-database\tp\tp-db> docker compose exec db psql -U gearshare -d gearshare -c "SELECT * FROM users;"
  id |     email      |   password_hash    | display_name |          created_at           
 ----+----------------+--------------------+--------------+-------------------------------
@@ -213,12 +215,13 @@ PS C:\Users\lubin\Documents\Git\fullstack-data-application-2026\seances\seance-3
   3 |       4 |           3 | 2026-09-15 | 2026-09-20 | active
 (3 rows)
 ```
+
 Appliquez-le, puis **essayez délibérément de casser la base**. Écrivez une instruction pour
 chacun des cas suivants, et notez le message d'erreur exact et le nom de la contrainte violée :
 
 1. un deuxième utilisateur avec l'email `alice@esiee.fr` ;
 
-```
+```bash
 C:\Users\lubin\Documents\Git\fullstack-data-application-2026\seances\seance-3-database\tp\tp-db>docker compose down -v
 [+] Running 3/3
  ✔ Container tp-db-db-1   Removed                                                                                                                      0.5s
@@ -245,10 +248,9 @@ db-1  | psql:/docker-entrypoint-initdb.d/02-seed.sql:24: ERROR:  duplicate key v
 db-1  | DETAIL:  Key (email)=(alice@esiee.fr) already exists.
 ```
 
-
 2. un item dont le propriétaire n'existe pas (`owner_id = 999`) ;
 
-```
+```bash
 db-1  | 2026-10-08 14:14:43.714 UTC [63] ERROR:  insert or update on table "items" violates foreign key constraint "items_owner_id_fkey"
 db-1  | psql:/docker-entrypoint-initdb.d/02-seed.sql:24: ERROR:  insert or update on table "items" violates foreign key constraint "items_owner_id_fkey"
 db-1  | 2026-10-08 14:14:43.714 UTC [63] DETAIL:  Key (owner_id)=(999) is not present in table "users".
@@ -260,7 +262,7 @@ db-1  |             (999, 'Item de 999', '', 10.00)
 
 3. un item à tarif négatif ;
 
-```
+```bash
 db-1  | psql:/docker-entrypoint-initdb.d/02-seed.sql:24: ERROR:  new row for relation "items" violates check constraint "items_tarif_jour_check"
 db-1  | DETAIL:  Failing row contains (5, 1, Item a tarif négatif, , -10.00, t, 2026-10-08 14:16:01.625239+00).
 db-1  | 2026-10-08 14:16:01.625 UTC [63] ERROR:  new row for relation "items" violates check constraint "items_tarif_jour_check"
@@ -269,9 +271,10 @@ db-1  | 2026-10-08 14:16:01.625 UTC [63] STATEMENT:  INSERT INTO items (owner_id
 db-1  |         VALUES
 db-1  |             (1, 'Item a tarif négatif', '', -10.00)
 ```
+
 4. une réservation qui se termine avant de commencer ;
 
-```
+```bash
 db-1  | 2026-10-08 14:18:17.229 UTC [63] ERROR:  new row for relation "reservations" violates check constraint "dates_coherentes"
 db-1  | 2026-10-08 14:18:17.229 UTC [63] DETAIL:  Failing row contains (4, 1, 2, 2026-09-10, 2026-09-09, terminee).
 db-1  | 2026-10-08 14:18:17.229 UTC [63] STATEMENT:  INSERT INTO reservations (item_id, borrower_id, date_debut, date_fin, statut)
@@ -282,7 +285,8 @@ db-1  | DETAIL:  Failing row contains (4, 1, 2, 2026-09-10, 2026-09-09, terminee
 ```
 
 5. une réservation au statut `en_attente_peut_etre`.
-```
+
+```bash
 db-1  | psql:/docker-entrypoint-initdb.d/02-seed.sql:23: ERROR:  new row for relation "reservations" violates check constraint "statut_valide"
 db-1  | 2026-10-08 14:19:15.439 UTC [63] ERROR:  new row for relation "reservations" violates check constraint "statut_valide"
 db-1  | 2026-10-08 14:19:15.439 UTC [63] DETAIL:  Failing row contains (4, 2, 2, 2026-09-01, 2026-09-05, en_attente_peut_etre).
@@ -292,7 +296,6 @@ db-1  |             (2, 2, '2026-09-01', '2026-09-05', 'en_attente_peut_etre');
 db-1  | DETAIL:  Failing row contains (4, 2, 2, 2026-09-01, 2026-09-05, en_attente_peut_etre).
 ```
 
-
 Les cinq doivent échouer. Consignez les noms de contraintes : c'est ce que vous intercepterez en
 Python (séance 4) pour renvoyer un `409` propre au lieu d'un `500`.
 
@@ -300,21 +303,24 @@ Puis testez la suppression d'un utilisateur : comptez les items de Bob, puis sup
 base refuse. Lisez attentivement le message : il vous dit pourquoi et nomme la contrainte qui
 bloque. Vérifiez que rien n'a été supprimé, pas même ses items.
 
-```
+```bash
 C:\Users\lubin\Documents\Git\fullstack-data-application-2026\seances\seance-3-database\tp\tp-db>docker compose exec db psql -U gearshare -d gearshare -c "SELECT * FROM items WHERE owner_id = 2;"
  id | owner_id |     titre      |      description       | tarif_jour | disponible |          created_at
 ----+----------+----------------+------------------------+------------+------------+-------------------------------
   3 |        2 | Tente 2 places |                        |      12.00 | t          | 2026-10-08 14:23:54.086826+00
   4 |        2 | Appareil photo | Reflex + objectif 50mm |      20.00 | t          | 2026-10-08 14:23:54.086826+00
 (2 rows)
+```
 
-
-avec :
+Avec :
+```python
 CREATE TABLE items (
     id          BIGSERIAL PRIMARY KEY,
     owner_id    BIGINT       NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+```
 dans la base, les items sont supprimés en cascade avec la suppression de Bob :
 
+```bash
 C:\Users\lubin\Documents\Git\fullstack-data-application-2026\seances\seance-3-database\tp\tp-db>docker compose exec db psql -U gearshare -d gearshare -c "SELECT * FROM items WHERE owner_id = 2;"
  id | owner_id |     titre      |      description       | tarif_jour | disponible |          created_at
 ----+----------+----------------+------------------------+------------+------------+-------------------------------
@@ -330,21 +336,23 @@ C:\Users\lubin\Documents\Git\fullstack-data-application-2026\seances\seance-3-da
  id | owner_id | titre | description | tarif_jour | disponible | created_at
 ----+----------+-------+-------------+------------+------------+------------
 (0 rows)
+```
 
-Sans ON DELETE CASCADE sur owner_id :
+Sans `ON DELETE CASCADE` sur `owner_id` :
 
+```bash
 docker compose exec db psql -U gearshare -d gearshare -c "DELETE FROM users WHERE id = 2;"
 ERROR:  update or delete on table "users" violates foreign key constraint "items_owner_id_fkey" on table "items"
 DETAIL:  Key (id)=(2) is still referenced from table "items".
 ```
-
 
 Voyons maintenant ce qui se passerait sans ce garde-fou. Écrivez les deux instructions
 `ALTER TABLE` qui suppriment la clé étrangère de `borrower_id`, puis la recréent, sous le même nom,
 avec `ON DELETE CASCADE`. Supprimez à nouveau Bob, recomptez ses items et regardez ce que contient
 la table `reservations`. Pour chaque ligne disparue, notez qui l'a perdue et pourquoi : par quelle
 clé étrangère la cascade est passée.
-```
+
+```bash
 C:\Users\lubin\Documents\Git\fullstack-data-application-2026\seances\seance-3-database\tp\tp-db>docker compose exec db psql -U gearshare -d gearshare -c "ALTER TABLE items DROP CONSTRAINT items_owner_id_fkey;" && docker compose exec db psql -U gearshare -d gearshare -c "ALTER TABLE items ADD CONSTRAINT items_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE;"
 ALTER TABLE
 ALTER TABLE
@@ -363,10 +371,9 @@ GearShare ? Supprimer un compte doit-il effacer l'historique des prêts que d'au
 ont faits sur son matériel ? Et ses propres emprunts ? Notez votre décision — c'est un choix de
 conception, pas un détail.
 
-```
-On supprime les ON DELETE CASCADE pour le projet GearShare, car : l'historique des prêts des autres sur son matériel ne doit pas disparaître lorsqu'on supprime un utilisateur. La réservation d'Alice sur la tente de Bob est l'historique d'Alice pas celui de Bob, si on garde le CASCADE et qu'on supprime Bob ça effacerait la résrvation quand même.
+
+Réponse : On supprime les `ON DELETE CASCADE` pour le projet GearShare, car : l'historique des prêts des autres sur son matériel ne doit pas disparaître lorsqu'on supprime un utilisateur. La réservation d'Alice sur la tente de Bob est l'historique d'Alice pas celui de Bob, si on garde le `CASCADE` et qu'on supprime Bob ça effacerait la résrvation quand même.
 Les emprunts de Bob doivent être conservés pour servir en cas de litige. (traçabilité)
-```
 
 
 Rechargez ensuite les données (`docker compose down -v && docker compose up -d`).
@@ -393,7 +400,7 @@ commentaire. Toutes doivent être testées.
 La requête 4 est celle sur laquelle je vous attends. Si votre résultat ne contient que les items
 réservés, ou si la Perceuse apparaît avec 1 réservation, corrigez.
 
-```
+```bash
 docker compose exec -T db psql -U gearshare -d gearshare -f - < sql/requetes.sql
 ```
 
@@ -419,7 +426,7 @@ Notez aussi ce que répond `psql` à la validation, et ce qu'il répond si vous 
 commande entre l'erreur et la validation. C'est exactement ce que vous devrez gérer côté
 SQLAlchemy en séance 4.
 
-```
+```bash
 A)
 gearshare=# BEGIN;
 UPDATE items SET tarif_jour = 99.00 WHERE titre = 'Vélo de ville';
@@ -473,11 +480,13 @@ A)
 gearshare=# ROLLBACK;
 WARNING:  there is no transaction in progress
 ROLLBACK
+```
 >> une fois qu'on a commit on ne peut pas revenir en arrière
 
 
-Atomicité
+#### Atomicité
 
+```bash
 gearshare=# BEGIN;
 BEGIN
 gearshare=*# INSERT INTO reservations (item_id, borrower_id, date_debut, date_fin, statut)
@@ -489,18 +498,20 @@ gearshare=*# INSERT INTO reservations (item_id, borrower_id, date_debut, date_fi
 VALUES (1, 999, DATE '2026-11-01', DATE '2026-11-04', 'active');
 ERROR:  insert or update on table "reservations" violates foreign key constraint "reservations_borrower_id_fkey"
 DETAIL:  Key (borrower_id)=(999) is not present in table "users".
+```
+(`borrower_id = 999` n'existe pas)
 
-(borrower_id = 999 n'existe pas)
-
+```bash
 gearshare=!# SELECT 1;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+```
 
 Transaction en état d'échec, toutes commande est refusée jusqu'à la fin.
-Il faut ROLLBACK ou COMMIT
+Il faut `ROLLBACK` ou `COMMIT`
 
+```bash
 gearshare=!# COMMIT;
 ROLLBACK
-
 
 gearshare=# SELECT * FROM reservations WHERE item_id = 1;
 SELECT disponible FROM items WHERE id = 1;
@@ -514,10 +525,10 @@ SELECT disponible FROM items WHERE id = 1;
 ------------
  f
 (1 row)
+```
 
 La réservation de novembre n'existe pas, le vélo est toujours disponible : 
 l'erreur survenue après les deux instructions valides les a effacées rétroactivement. Tout ou rien = atomicité.
-```
 
 ---
 
@@ -527,7 +538,8 @@ l'erreur survenue après les deux instructions valides les a effacées rétroact
 `Item de test 2`, …, `Item de test 200000`, avec un tarif aléatoire entre 1 et 51 €. Une seule
 instruction suffit : cherchez `generate_series` et `random()` dans la documentation. Lancez
 ensuite `ANALYZE items;` pour mettre à jour les statistiques du planificateur.
-```
+
+```bash
 C:\Users\lubin\Documents\Git\fullstack-data-application-2026\seances\seance-3-database\tp\tp-db>docker compose exec db psql -U gearshare -d gearshare
 psql (16.15 (Debian 16.15-1.pgdg13+2))
 Type "help" for help.
@@ -544,7 +556,8 @@ ANALYZE
 
 **Mesurez** avec `EXPLAIN ANALYZE` la recherche de l'item de titre exact `Item de test 123456`.
 Relevez le type de nœud et le temps d'exécution.
-```
+
+```bash
 gearshare=# EXPLAIN ANALYZE SELECT * FROM items WHERE titre = 'Item de test 123456';
                                             QUERY PLAN
 ---------------------------------------------------------------------------------------------------
@@ -560,7 +573,8 @@ gearshare=# EXPLAIN ANALYZE SELECT * FROM items WHERE titre = 'Item de test 1234
 
 Créez un index sur `titre`, relancez `ANALYZE`, remesurez. Consignez les deux chiffres dans
 `MESURES.md` avec le facteur d'accélération.
-```
+
+```bash
 gearshare=# CREATE INDEX idx_items_titre ON items (titre);
 ANALYZE items;
 EXPLAIN ANALYZE SELECT * FROM items WHERE titre = 'Item de test 123456';
@@ -573,18 +587,18 @@ ANALYZE
  Planning Time: 0.368 ms
  Execution Time: 0.154 ms
 (4 rows)
+```
 
 En créant un index sur titre, on stock dans un B-tree les titres triés. Ca permet d'aller rechercher une ligne en complexité logarithmique plutôt que linéaire.
 Temps d'exécution = 0,154 ms 
 C'est 62 fois plus rapide par rapport aux 9,6 ms sans l'index
 
-```
 
 Mesurez ensuite deux cas plus subtils :
 
 - (a) la recherche des titres qui **se terminent** par `123456` (joker en tête avec `LIKE`) ;
 
-```
+```bash
 gearshare=# EXPLAIN ANALYZE SELECT * FROM items WHERE titre LIKE '%123456';
                                               QUERY PLAN
 ------------------------------------------------------------------------------------------------------
@@ -594,14 +608,16 @@ gearshare=# EXPLAIN ANALYZE SELECT * FROM items WHERE titre LIKE '%123456';
  Planning Time: 1.735 ms
  Execution Time: 16.875 ms
 (5 rows)
+```
 
 16.875 ms est attendu 
 Mettre un joker en tête (%) rend impossible de descendre l'arbre de façon ordonné car un B-tree est trié en commençant par le début de la chaîne de caractères, donc dans ce cas l'index est inutilisable et la complexité est linéaire.
-```
+
 
 - (b) le filtre `disponible = TRUE`, **après** avoir créé un index sur `disponible` et relancé
   `ANALYZE`. Mesurez ensuite `disponible = FALSE`, avec le même index.
-```
+
+```bash
 gearshare=# EXPLAIN ANALYZE SELECT count(*) FROM items WHERE disponible = TRUE;
                                                     QUERY PLAN
 -------------------------------------------------------------------------------------------------------------------
@@ -631,7 +647,7 @@ est trié par le début de la chaîne. Indice pour (b) : comptez combien de lign
 des deux conditions. Question bonus : l'index sur `titre` sert-il pour un `LIKE` avec le joker
 **en fin** de chaîne ? Mesurez avant de répondre.)
 
-```
+```bash
 gearshare=# EXPLAIN ANALYZE SELECT * FROM items WHERE titre LIKE 'Item de test 123%';
                                                 QUERY PLAN
 ----------------------------------------------------------------------------------------------------------
@@ -666,11 +682,9 @@ gearshare=# SELECT disponible, count(*) FROM items GROUP BY disponible;
  f          |      1
  t          | 200003
 (2 rows)
-
-
-L'index B-tree standard ne sert pas pour un LIKE, même avec le joker en fin.
 ```
 
+L'index B-tree standard ne sert pas pour un LIKE, même avec le joker en fin.
 
 ---
 
@@ -729,9 +743,8 @@ Sur le non-chevauchement : garantissez-le par une contrainte d'exclusion (`EXCLU
 documentation PostgreSQL), ou documentez explicitement dans `REVIEW-schema.md` que vous le gérerez
 en applicatif et pourquoi. Ce que je ne veux pas, c'est que la question soit passée sous silence.
 
-```
+```bash
 docker compose exec -T db psql -U gearshare -d gearshare -f - < sql/requetes.sql
-
 ```
 
 ---
