@@ -66,8 +66,9 @@ Puis adaptez `docker-compose.yml` :
 - le contexte de construction (`build`) devient le dossier `backend/` ;
 - les volumes montent désormais `backend/app` et `backend/tests` dans le conteneur.
 
-```
-Dans docker-compose.yml :
+Dans `docker-compose.yml` :
+
+```python
 "api" -> "backend"
 "build: ." -> "build: ./backend"
 "volumes:
@@ -87,7 +88,6 @@ services:
       - ./backend/app:/code/app
       - ./backend/tests:/code/tests
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
 ```
 
 **Vérifiez :**
@@ -98,12 +98,10 @@ curl http://localhost:8000/health
 docker compose exec backend pytest
 ```
 
-```
+```bash
 {"status":"ok"}
 ====================== 35 passed, 1 warning in 1.52s =======================
-
 ```
-
 
 L'API répond et **tous vos tests de la séance 2 passent sans modification**. Si un test casse, le
 déplacement a changé quelque chose : corrigez avant d'aller plus loin. Committez.
@@ -139,16 +137,16 @@ frontend/
 `uvicorn`, `jinja2`, `httpx` et `python-multipart` (relisez la section 2.2 du cours 1 pour le rôle
 de chacune). Fixez leurs versions, comme dans le backend.
 
-```
-requirements.txt :
 
+`requirements.txt` :
+
+```text
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 jinja2
 httpx==0.27.2
 python-multipart
 ```
-
 
 Pas de SQLAlchemy, pas de driver PostgreSQL : le frontend n'en aura **jamais** besoin.
 
@@ -163,7 +161,7 @@ Ajoutez un service `frontend` dans `docker-compose.yml`. Il doit :
 - monter `frontend/app` dans le conteneur et lancer `uvicorn` avec `--reload`, comme le backend,
   pour que vos modifications soient prises en compte sans reconstruire l'image.
 
-```
+```bash
 services:
   backend:
     build: ./backend
@@ -195,7 +193,7 @@ d'environnement de la [section 1.2 du cours 1](../cours/cours1-frontend.md#12-co
 [section 2.4](../cours/cours1-frontend.md#24-les-templates-jinja2) du cours 1. Dans `main.py`, ajoutez une
 route d'accueil `GET /` qui redirige vers la liste du matériel, `/items`.
 
-```
+```python
 # app/main.py
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -231,7 +229,7 @@ def home() -> RedirectResponse:
 Écrivez aussi `templates/erreur.html` : il étend `base.html` et affiche simplement
 `{{ message }}` dans un paragraphe, avec un lien de retour vers `/items`.
 
-```
+```python
 {# app/templates/erreur.html #}
 {% extends "base.html" %}
 
@@ -254,16 +252,16 @@ docker compose up --build -d
 docker compose ps
 ```
 
-```
+```bash
 C:\Users\lubin\Documents\Git\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>docker compose ps
 NAME                          IMAGE                       COMMAND                  SERVICE    CREATED          STATUS          PORTS
 projet-gearshare-backend-1    projet-gearshare-backend    "uvicorn app.main:ap…"   backend    18 seconds ago   Up 16 seconds   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
 projet-gearshare-frontend-1   projet-gearshare-frontend   "uvicorn app.main:ap…"   frontend   17 seconds ago   Up 16 seconds   0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
 ```
-```
-Ne pas oublier de compléter app/api_client.py
-Et frontend/app/router/items.py.
-```
+
+Ne pas oublier de compléter `app/api_client.py`
+Et `frontend/app/router/items.py`.
+
 
 Les deux services sont `running`. `http://localhost:8080/static/style.css` affiche votre feuille de
 style. La page d'accueil renvoie encore une erreur : la route `/items` n'existe pas, c'est l'étape
@@ -284,7 +282,7 @@ une chaîne mais une **liste d'erreurs**, une par champ invalide. Chacune contie
 doit gérer les deux cas : une chaîne simple, ou une liste. Appelez une route en erreur depuis
 `/docs` pour observer le format exact.
 
-```
+```python
 ApiError de app/api_client.py
 class ApiError(Exception):
     """Erreur renvoyée par le backend, ou backend injoignable."""
@@ -300,14 +298,15 @@ class ApiError(Exception):
         if isinstance(self.detail, list):
             return [f"{err['loc'][-1]} : {err['msg']}" for err in self.detail]
         return [str(self.detail)]
+```
 
-Dans ApiClient, ajouter la fonction :
+Dans `ApiClient`, ajouter la fonction :
+
+```python
 def create_item(self, data: dict[str, Any]) -> dict[str, Any]:
     return self._send("POST", "/items", json=data)
-
-Créer les items depuis :
-http://localhost:8000/docs
 ```
+Créer les items depuis : `http://localhost:8000/docs`
 
 
 **Vérifiez depuis le conteneur du frontend**, avant d'écrire la moindre page. Créez d'abord deux
@@ -316,7 +315,8 @@ ou trois items depuis `http://localhost:8000/docs`, puis :
 ```bash
 docker compose exec frontend python -c "from app.api_client import api_client; print(api_client.list_items())"
 ```
-```
+
+```bash
 C:\Users\lubin\Documents\Git\fullstack-data-application-2026\seances\seance-4-webapp\tp\projet-gearshare>docker compose exec frontend python -c "from app.api_client import api_client; print(api_client.list_items())"
 [{'id': 1, 'titre': 'TurboVelo', 'description': 'En promo 600% de réduction!!!', 'tarif_jour': 1.0, 'disponible': True}, {'id': 2, 'titre': '2 Mo de RAM', 'description': "899 999 € l'unité", 'tarif_jour': 1.0, 'disponible': True}]
 ```
@@ -325,7 +325,8 @@ Vous devez voir vos items. Faites ensuite une expérience : dans `docker-compose
 temporairement `http://backend:8000` par `http://localhost:8000`, relancez
 (`docker compose up -d`) et rejouez la commande. Vous obtenez une `ApiError` `503`, parce que dans
 le conteneur du frontend, `localhost` désigne le frontend lui-même. Remettez `backend`.
-```
+
+```bash
   File "/code/app/api_client.py", line 35, in _send
     raise ApiError(503, "Le service est momentanément indisponible.") from exc
 app.api_client.ApiError: 503: Le service est momentanément indisponible.
@@ -354,11 +355,11 @@ titre, description, tarif, statut, et un lien de retour vers la liste.
    l'échappement automatique est désactivé quelque part : trouvez où.
 
 
-```
-Remplir items.py et list.html.
 
-list.html :
+Remplir `items.py` et `list.html`.
 
+`list.html` :
+```html
 {# app/templates/items/list.html #}
 {% extends "base.html" %}
 
@@ -387,9 +388,10 @@ list.html :
   <p>Aucun objet pour le moment.</p>
 {% endif %}
 {% endblock %}
+```
 
-
-detail.html :
+`detail.html` :
+```html
 {# app/templates/items/detail.html #}
 {% extends "base.html" %}
 
@@ -403,18 +405,16 @@ detail.html :
 <p>Tarif : {{ item.tarif_jour }} € / jour</p>
 <p>Statut : {{ "Disponible" if item.disponible else "Indisponible" }}</p>
 {% endblock %}
+```
 
-```
-```
+```bash
 >curl http://localhost:8080/items/9999
 [...]
   <p>Cette page n&#39;existe pas ou plus.</p>
   <p><a href="/items">Retour à la liste du matériel</a></p>
 ```
-```
-La balise n'est pas interprété donc tout est correct.
-```
 
+La balise n'est pas interprété donc tout est correct.
 
 ---
 
@@ -469,15 +469,16 @@ transmettrez au backend comme une absence de description.
    champs préremplis ;
 4. même chose avec un titre de deux caractères.
 
-```
+```bash
 3. tarif_jour : Input should be greater than 0
 
 4. titre : String should have at least 3 characters
 ```
+
 Le point 3 est la démonstration de la section 1.1 du cours 1 : la validation du navigateur est du
 confort. Retirez-la, et c'est le backend qui protège les données.
 
-```
+```python
 # app/routers/items.py
 from typing import Annotated
 from fastapi import APIRouter, Form, Request
@@ -534,9 +535,9 @@ def create_item_page(
 def item_detail_page(request: Request, item_id: int) -> HTMLResponse:
     item = api_client.get_item(item_id)
     return templates.TemplateResponse(request, "items/detail.html", {"item": item})
+```
 
-```
-```
+```html
 frontend/app/templates/items/form.html
 
 {% extends "base.html" %}
@@ -626,18 +627,18 @@ la même réservation en renvoyant le formulaire (bouton Précédent du navigate
 le message « déjà annulée », pas une page d'erreur.
 
 
-```
 Ajout dans l'API Client :
+```python
     def list_reservations(self, item_id: int) -> list[dict[str, Any]]:
         return self._send("GET", "/reservations", params={"item_id": item_id})
 
     def update_reservation_status(self, reservation_id: int, statut: str) -> dict[str, Any]:
         return self._send("PATCH", f"/reservations/{reservation_id}", json={"statut": statut})
-
 ```
-```
-Dans router/items.py, remplacer l'ancienne route :
 
+Dans `router/items.py`, remplacer l'ancienne route :
+
+```python
 @router.get("/items/{item_id}", response_class=HTMLResponse)
 def item_detail_page(request: Request, item_id: int) -> HTMLResponse:
     item = api_client.get_item(item_id)
@@ -673,9 +674,10 @@ def render_item_detail(request, item_id, *, erreurs=None, valeurs=None, message=
 def item_detail_page(request: Request, item_id: int, message: str | None = None):
     return render_item_detail(request, item_id, message=message)
 ```
-```
-Nouveau routeur (router/reservations.py)
 
+Nouveau routeur (`router/reservations.py`)
+
+```python
 from datetime import date
 from typing import Annotated
 
@@ -724,13 +726,14 @@ def update_reservation_page(
         raise
     return RedirectResponse(f"/items/{item_id}?message=annulee", status_code=303)
 ```
-```
-Enregistrer le nouveau routeur dans main.py
-app.include_router(reservations.router)
-```
-```
-template items/detail.py à compléter par
 
+Enregistrer le nouveau routeur dans `main.py`
+`app.include_router(reservations.router)`
+
+
+template `items/detail.py` à compléter par :
+
+```python
 {% if message %}
   <div class="alerte alerte-{{ message[0] }}">{{ message[1] }}</div>
 {% endif %}
@@ -781,10 +784,10 @@ template items/detail.py à compléter par
 </form>
 {% endblock %}
 ```
-```
+
 réservez un item, rechargez la page (une seule réservation), tentez une date de fin :
-```
-```
+
+```bash
 body : Value error, date_fin doit être postérieure à date_debut
 ```
 
@@ -798,11 +801,12 @@ Deux expériences, qui préparent la suite :
    navigateur. Vous devez voir votre page « service indisponible », avec un code `503`, et non une
    stack trace. Relancez-le : `docker compose start backend`.
 
-```
+```bash
 Le service est momentanément indisponible. Réessayez dans un instant.
 
 Retour à la liste du matériel
 ```
+
 2. **Revenez sur la liste.** Vos items ont disparu : le stockage du backend est en mémoire, et il
    a été vidé au redémarrage. Le frontend, lui, n'a rien perdu, puisqu'il ne stocke rien.
 
@@ -822,11 +826,11 @@ Sur le dépôt Git de votre groupe :
 3. **Le frontend** : liste, détail, création d'un item, réservation et annulation depuis la page
    de détail, en respectant les contraintes de l'étape 5.
 
-
-```
+```bash
 docker compose run --rm backend pytest
 ============================================================== 35 passed, 1 warning in 0.51s ===============================================================
 ```
+
 ## Pour aller plus loin
 
 - **Testez le frontend sans backend.** Avec le `TestClient` de FastAPI et `monkeypatch`,
