@@ -103,11 +103,15 @@ def get_item(item_id: int = Path(ge=1)):
 ```
 
 Appelez à nouveau `GET /items/-1`. Regardez aussi `/docs` : la contrainte y apparaît.
+
+Résultats : 
+```bash
+"Input should be greater than or equal to 1","input":"-1"
 ```
-Résultats : "Input should be greater than or equal to 1","input":"-1"
-```
-```
-Sur http://localhost:8000/docs on a aussi "For 'item_id': Value must be greater than or equal to 1."
+
+Sur `http://localhost:8000/docs` on a aussi 
+```bash
+For 'item_id': Value must be greater than or equal to 1.
 ```
 ---
 
@@ -141,20 +145,31 @@ def list_items(
 
 ```bash
 curl -UseBasicParsing "http://localhost:8000/items"
--> StatusCode : 200
+```
+```bash
+StatusCode : 200
 StatusDescription : OK
 Content           : {"skip":0,"limit":20,"q":null,"disponible":null}
-
+```
+```bash
 curl -UseBasicParsing "http://localhost:8000/items?limit=5&q=velo"
--> StatusCode : 200
+```
+```bash
+StatusCode : 200
 StatusDescription : OK
 Content : {"skip":0,"limit":5,"q":"velo","disponible":null}
-
+```
+```bash
 curl -UseBasicParsing "http://localhost:8000/items?limit=500"      # attendu : 422
--> Input should be less than or equal to 100","input":"500"
-
+```
+```bash
+Input should be less than or equal to 100","input":"500"
+```
+```bash
 curl -UseBasicParsing "http://localhost:8000/items?disponible=oui" # que se passe-t-il ?
--> Input should be a valid boolean, unable to interpret input","input":"oui"
+```
+```bash
+Input should be a valid boolean, unable to interpret input","input":"oui"
 ```
 
 La dernière : FastAPI accepte `true`, `false`, `1`, `0`, `yes`, `no`, `on`, `off` pour un booléen.
